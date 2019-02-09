@@ -1,0 +1,3 @@
+[submodule "structuremap"]
+	path = structuremap
+	url = https://github.com/structuremap/structuremap
