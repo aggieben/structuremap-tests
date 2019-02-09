@@ -16,9 +16,24 @@ namespace StructureMapTests
     }
 
     public interface IBazService { }
+    public interface IBar
+    {
+        IFoo Foo { get; }
+    }
+    public class Bar : IBar
+    {
+        public Bar(IFoo foo)
+        {
+            Foo = foo;
+        }
+
+        public IFoo Foo { get; }
+    }
 
     public interface IFoo { }
     public class Foo : IFoo { }
+
+    public class BazService : IBazService { }
 
     public class BarFactory : IBarFactory
     {
