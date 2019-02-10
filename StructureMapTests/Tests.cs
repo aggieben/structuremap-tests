@@ -128,6 +128,31 @@ namespace StructureMapTests
 
         [Theory]
         [MemberData(nameof(GetRegistries))]
+        public void TransitiveDependency_BothInjected(Registry registry)
+        {
+            using (var container = new Container(cfg => cfg.IncludeRegistry(registry)))
+            {
+                var bar = container.GetInstance<IBar>();
+                Assert.IsType<Foo>(bar.Foo);
+
+                var fakeFoo = Substitute.For<IFoo>();
+                var child = container.CreateChildContainer();
+                child.Configure(cfg =>
+                {
+                    cfg.For<IFoo>().Use(fakeFoo);
+                    cfg.For<IBar>().Use<Bar>();
+                });
+
+                var foo2 = child.GetInstance<IFoo>();
+                Assert.IsNotType<Foo>(foo2);
+
+                var bar2 = child.GetInstance<IBar>();
+                Assert.IsNotType<Foo>(bar2.Foo);
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(GetRegistries))]
         public void TransitiveDependency(Registry registry)
         {
             using (var container = new Container(cfg => cfg.IncludeRegistry(registry)))
