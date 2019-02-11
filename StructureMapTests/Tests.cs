@@ -2,12 +2,20 @@ using Xunit;
 using StructureMap;
 using NSubstitute;
 using System.Collections.Generic;
-using StructureMap.Query;
+using FluentAssertions;
+using System.IO;
+using Xunit.Abstractions;
 
 namespace StructureMapTests
 {
     public class Tests
     {
+        private readonly ITestOutputHelper _output;
+        public Tests(ITestOutputHelper output)
+        {
+            _output = output;
+        }
+
         public static IEnumerable<object[]> GetRegistries()
         {
             yield return new object[] { new SingletonRegistry() };
@@ -185,6 +193,84 @@ namespace StructureMapTests
                 var baz2 = child.GetInstance<IBazService>();
                 Assert.IsNotType<BazService>(baz2);
             }
+        }
+
+        [Fact]
+        public void TransitiveDependency_DirectConfiguration()
+        {
+            var parent = new Container(_ =>
+            {
+                _.For<IFoo>().Use<Foo>();
+                _.For<IBar>().Use<Bar>();
+            });
+
+            var child = parent.CreateChildContainer();
+            child.Configure(x =>
+            {
+                x.For<IFoo>().Use(Substitute.For<IFoo>());
+            });
+
+            parent.GetInstance<IBar>().Foo
+                .Should().BeOfType<Foo>();
+
+            child.GetInstance<IBar>().Foo
+                .Should().NotBeOfType<Foo>();
+        }
+
+        [Theory]
+        [ClassData(typeof(RegistryClassData))]
+        public void TransitiveDependency_TheoryA(Registry registry)
+        {
+            var parent = new Container(_ => _.IncludeRegistry(registry));
+            var child = parent.CreateChildContainer();
+
+            child.Configure(x =>
+            {
+                x.For<IFooRepository>().Use(Substitute.For<IFooRepository>());
+            });
+
+            parent.GetInstance<IFooProvider>().Repository
+                .Should().BeOfType<FooRepository>();
+
+            child.GetInstance<IFooProvider>().Repository
+                .Should().NotBeOfType<FooRepository>();
+        }
+
+        [Theory]
+        [ClassData(typeof(RegistryClassData))]
+        public void TransitiveDependency_TheoryB(Registry registry)
+        {
+            var parent = new Container(_ => _.IncludeRegistry(registry));
+            var child = parent.CreateChildContainer();
+
+            child.Configure(x =>
+            {
+                x.For<IFoo>().Use(Substitute.For<IFoo>());
+            });
+
+            parent.GetInstance<IBar>().Foo
+                .Should().BeOfType<Foo>();
+
+            child.GetInstance<IBar>().Foo
+                .Should().NotBeOfType<Foo>();
+        }
+
+        [Fact]
+        public void TransitiveDependency_NoDecorationsRegistry()
+        {
+            var parent = new Container(_ => _.IncludeRegistry(new NoDecorationsRegistry()));
+            var child = parent.CreateChildContainer();
+
+            child.Configure(x =>
+            {
+                x.For<IFoo>().Use(Substitute.For<IFoo>());
+            });
+
+            parent.GetInstance<IBar>().Foo
+                .Should().BeOfType<Foo>();
+
+            child.GetInstance<IBar>().Foo
+                .Should().NotBeOfType<Foo>();
         }
     }
 }
